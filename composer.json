@@ -1,0 +1,19 @@
+{
+    "name": "dreamblazenet/crazydatamapper",
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/DreamblazeNet/GenSql"
+        }
+    ],
+    "require-dev": {
+        "phpunit/phpunit": "3.7.*",
+        "phpunit/dbunit": ">=1.2"
+    },
+    "require": {
+        "dreamblazenet/gensql": "dev-master"
+    },
+    "autoload": {
+        "psr-0": { "DreamblazeNet\\CrazyDataMapper": "src/" }
+    }
+}
