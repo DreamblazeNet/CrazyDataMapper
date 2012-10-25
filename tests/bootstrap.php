@@ -24,8 +24,14 @@ spl_autoload_register(function($className){
         else
             $path = __DIR__ . '/../Tests/';
 
-        $path .= $lastNamespace . '/' . $class . '.php';
-        if(file_exists($path))
-            require_once $path;
+        $paths = array();
+        $paths[] = $path . $lastNamespace . '/' . $class . '.php';
+        $paths[] = $path . $lastNamespace . '/db/' . $class . '.php';
+        $paths[] = $path . $lastNamespace . '/unit/' . $class . '.php';
+
+        foreach($paths as $tPath){
+            if(file_exists($tPath))
+                require_once $tPath;
+        }
     }
 });
