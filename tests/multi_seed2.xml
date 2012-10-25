@@ -1,0 +1,53 @@
+<?xml version="1.0" ?>
+<dataset>
+    <table name="characters">
+        <column>id</column>
+        <column>account_id</column>
+        <column>name</column>
+        <column>level</column>
+        <column>money</column>
+        <row>
+            <value>1</value>
+            <value>1</value>
+            <value>JoesChar</value>
+            <value>100</value>
+            <value>1000</value>
+        </row>
+        <row>
+            <value>2</value>
+            <value>2</value>
+            <value>KittyBunny</value>
+            <value>10</value>
+            <value>100</value>
+        </row>
+        <row>
+            <value>3</value>
+            <value>2</value>
+            <value>KittyMouse</value>
+            <value>1</value>
+            <value>10</value>
+        </row>
+    </table>
+    <table name="guilds">
+        <column>id</column>
+        <column>leader_id</column>
+        <column>name</column>
+        <column>money</column>
+        <row>
+            <value>1</value>
+            <value>1</value>
+            <value>HappyHippos</value>
+            <value>10000</value>
+        </row>
+    </table>
+    <table name="guild_members">
+        <column>guild_id</column>
+        <column>character_id</column>
+        <column>rank</column>
+        <row>
+            <value>1</value>
+            <value>2</value>
+            <value>5</value>
+        </row>
+    </table>
+</dataset>

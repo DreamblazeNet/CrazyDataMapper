@@ -38,7 +38,7 @@ class ObjectCollectionTest extends \PHPUnit_Framework_TestCase
     public function testFilters(){
         $objectCollection = $this->generateObjectCollection();
 
-        $objectCollection->filter(array('id' => 1, 'name' => 'test'));
+        $objectCollection->filter(array('oid' => 1, 'oname' => 'test'));
 
         $expectedSql = 'SELECT noDummyTable.id, noDummyTable.name, noDummyTable.date FROM noDummyTable WHERE noDummyTable.id = :id AND noDummyTable.name = :name';
         $expectedValues = Array (
@@ -56,6 +56,28 @@ class ObjectCollectionTest extends \PHPUnit_Framework_TestCase
         $objectCollection->limit(1);
 
         $expectedSql = 'SELECT noDummyTable.id, noDummyTable.name, noDummyTable.date FROM noDummyTable LIMIT 0,1';
+        $expectedValues = Array();
+
+        $this->checkSql($objectCollection, $expectedSql, $expectedValues);
+    }
+
+    public function testOrder(){
+        $objectCollection = $this->generateObjectCollection();
+
+        $objectCollection->order(array('oname'));
+
+        $expectedSql = 'SELECT noDummyTable.id, noDummyTable.name, noDummyTable.date FROM noDummyTable ORDER BY name';
+        $expectedValues = Array();
+
+        $this->checkSql($objectCollection, $expectedSql, $expectedValues);
+    }
+
+    public function testOrderWithDirection(){
+        $objectCollection = $this->generateObjectCollection();
+
+        $objectCollection->order(array('oname DESC'));
+
+        $expectedSql = 'SELECT noDummyTable.id, noDummyTable.name, noDummyTable.date FROM noDummyTable ORDER BY name DESC';
         $expectedValues = Array();
 
         $this->checkSql($objectCollection, $expectedSql, $expectedValues);
@@ -83,7 +105,7 @@ class ObjectCollectionTest extends \PHPUnit_Framework_TestCase
         $testResult = array($testObject);
         DummyDatabaseStatement::$testResult = $testResult;
 
-        $objects = $objectCollection->getObjects();
+        $objects = $objectCollection->all();
 
         $this->assertCount(1, $objects);
         $this->assertInstanceOf('DreamblazeNet\\CrazyDataMapper\\IDataObject', $objects[0]);
@@ -93,12 +115,40 @@ class ObjectCollectionTest extends \PHPUnit_Framework_TestCase
 
     public function testIteration(){
         $objectCollection = $this->generateObjectCollection();
-        $this->mapper->registerMap(new MinionMap());
 
-        foreach($objectCollection as $object){
+        $testObjects = $this->fillWithDummies(4);
 
+        foreach($objectCollection as $key=>$object){
+            $this->assertTrue($key > 0 && $key < 4);
+            $this->assertContains($object, $testObjects);
         }
+        $this->assertCount(4, $objectCollection);
+    }
 
+    public function testFirst(){
+        $objectCollection = $this->generateObjectCollection();
+        $testObjects = $this->fillWithDummies(3);
+
+        $this->assertEquals($testObjects[0]->name, $objectCollection->first()->name);
+    }
+
+    public function testLast(){
+        $objectCollection = $this->generateObjectCollection();
+        $testObjects = $this->fillWithDummies(3);
+
+        $this->assertEquals($testObjects[2]->name, $objectCollection->last()->name);
+    }
+
+    private function fillWithDummies($amount){
+        $testObjects = array();
+        for($i=0;$i<$amount;$i++){
+            $testObject = new Dummy();
+            $testObject->id = $i + 1;
+            $testObject->name = "TestName" . $i;
+            $testObjects[] = $testObject;
+        }
+        DummyDatabaseStatement::$testResult = $testObjects;
+        return $testObjects;
     }
 
     private function checkSql(DataObjectCollection $objectCollection, $expectedSql, $expectedValues){
@@ -106,13 +156,11 @@ class ObjectCollectionTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals($expectedValues , $objectCollection->getValues());
     }
 
-
-
     private function generateObjectCollection(){
         $this->connection = new DummyDatabaseConnection('blub', 'testUser', 'testPass');
-        $this->mapper = new ObjectMapper($this->connection);
+        $this->mapper = new ObjectMapper();
         $dataObject = new Dummy();
-        $this->mapper->registerMap(new DummyMap());
+        $this->mapper->registerMap(new DummyMap(), $this->connection);
         return $this->mapper->find($dataObject);
     }
 }

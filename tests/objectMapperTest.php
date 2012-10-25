@@ -1,10 +1,12 @@
 <?php
 namespace DreamblazeNet\CrazyDataMapper\Tests;
 use \DreamblazeNet\CrazyDataMapper\Database\DummyDatabaseStatement;
-use \DreamblazeNet\CrazyDataMapper\Database\DummyDatabaseConnection;
+use \DreamblazeNet\CrazyDataMapper\Database\PdoDatabaseConnection;
 use \DreamblazeNet\CrazyDataMapper\ObjectMapper;
 use \DreamblazeNet\CrazyDataMapper\Tests\Objects\Dummy;
 use \DreamblazeNet\CrazyDataMapper\Tests\Maps\DummyMap;
+use \DreamblazeNet\CrazyDataMapper\Tests\Maps\AccountMap;
+use \DreamblazeNet\CrazyDataMapper\Tests\Maps\CharacterMap;
 /**
  * Created by JetBrains PhpStorm.
  * User: mriedmann
@@ -18,13 +20,20 @@ class ObjectMapperTest extends \PHPUnit_Framework_TestCase
     private $DATAMAPPER_NAME = "ObjectMapper";
     private $DATAMAP_NAME = "DummyMap";
 
+    private $connection;
+
+    protected function setUp()
+    {
+        $this->connection = new PdoDatabaseConnection('blub', 'testUser', 'testPass');
+
+        parent::setUp();
+    }
+
 
     public function testConstruction(){
-        $connection = new DummyDatabaseConnection('blub', 'testUser', 'testPass');
-        $mapper = new ObjectMapper($connection);
-
-        $mapper->registerMap(new DummyMap());
-        $mapRegistry = $this->getMapRegistry($mapper);
+        $mapper = $this->generateMapper();
+        $mapper->registerMap(new DummyMap(), $this->connection);
+        $mapRegistry = $this->getObjProp($mapper, 'mapRegistry');
         $this->assertTrue(array_key_exists(__NAMESPACE__ . "\\Objects\\" . $this->DATAOBJECT_NAME, $mapRegistry));
         return $mapper;
     }
@@ -44,7 +53,7 @@ class ObjectMapperTest extends \PHPUnit_Framework_TestCase
     public function testGetMap(ObjectMapper $mapper){
         $object = new Dummy();
 
-        $mapRegistry = $this->getMapRegistry($mapper);
+        $mapRegistry = $this->getObjProp($mapper, 'mapRegistry');
         $this->assertTrue(array_key_exists(get_class($object), $mapRegistry));
 
         $map = $mapper->getMap($object);
@@ -52,10 +61,26 @@ class ObjectMapperTest extends \PHPUnit_Framework_TestCase
         $this->assertInstanceOf($mapType ,$map);
     }
 
-    private function getMapRegistry(ObjectMapper $mapper){
-        $refl = new \ReflectionClass($mapper);
-        $prop = $refl->getProperty('mapRegistry');
+    /**
+     * @depends testConstruction
+     */
+    public function testRegisterMap(ObjectMapper $mapper){
+        $mapper->registerMap(new AccountMap(), $this->connection);
+        $mapper->registerMap(new CharacterMap(), $this->connection);
+        $mapRegistry = $this->getObjProp($mapper, 'mapRegistry');
+        $this->assertArrayHasKey('DreamblazeNet\\CrazyDataMapper\\Tests\\Objects\\Account', $mapRegistry);
+        $this->assertArrayHasKey('DreamblazeNet\\CrazyDataMapper\\Tests\\Objects\\Character', $mapRegistry);
+    }
+
+    private function generateMapper(){
+        $mapper = new ObjectMapper();
+        return $mapper;
+    }
+
+    private function getObjProp($obj, $prop){
+        $refl = new \ReflectionClass($obj);
+        $prop = $refl->getProperty($prop);
         $prop->setAccessible(true);
-        return $prop->getValue($mapper);
+        return $prop->getValue($obj);
     }
 }

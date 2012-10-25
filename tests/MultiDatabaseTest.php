@@ -8,32 +8,27 @@ use \DreamblazeNet\CrazyDataMapper\Tests\Maps\CharacterMap;
 /**
  * Created by JetBrains PhpStorm.
  * User: mriedmann
- * Date: 13.10.12
- * Time: 01:34
+ * Date: 25.10.12
+ * Time: 01:00
  * To change this template use File | Settings | File Templates.
  */
-class DatabaseTest extends DatabaseTestCase
+class MultiDatabaseTest extends MultiDatabaseTestCase
 {
     /**
      * @var \DreamblazeNet\CrazyDataMapper\ObjectMapper
      */
     private $mapper;
-    private $connection;
 
     protected function setUp()
     {
-        $connection = new \DreamblazeNet\CrazyDataMapper\Database\PdoDatabaseConnection(null);
-        $connection->setConnection($this->getConnection()->getConnection());
-        $this->connection = $connection;
+        $this->generateMapper();
         parent::setUp();
     }
 
-    public function testRelations(){
-        $objectCollection = $this->generateObjectCollection();
-        $this->mapper->registerMap(new AccountMap(), $this->connection);
-        $this->mapper->registerMap(new CharacterMap(), $this->connection);
 
-        $objectCollection->includes(array('characters'));
+    public function testMultiDBRelations(){
+
+        $objectCollection = $this->generateObjectCollection();
 
         $objects = $objectCollection->all();
 
@@ -43,12 +38,28 @@ class DatabaseTest extends DatabaseTestCase
         $this->assertInstanceOf('DreamblazeNet\CrazyDataMapper\DataObjectCollection',$objects[0]->characters);
         $chars = $objects[0]->characters;
         $this->assertCount(2,$chars);
+
     }
 
+    private function generateMapper(){
+        $connection1 = new \DreamblazeNet\CrazyDataMapper\Database\PdoDatabaseConnection(null);
+        $conn = $this->getConnection();
+
+        $connection1->setConnection($conn->getConnection());
+
+        $connection2 = new \DreamblazeNet\CrazyDataMapper\Database\PdoDatabaseConnection(null);
+        $connection2->setConnection($this->getConnection()->getConnection());
+
+        $mapper = new ObjectMapper();
+        $mapper->registerMap(new AccountMap(), $connection1);
+        $mapper->registerMap(new CharacterMap(), $connection2);
+
+        $this->mapper = $mapper;
+    }
+
+
     private function generateObjectCollection(){
-        $this->mapper = new ObjectMapper();
         $dataObject = new Account();
-        $this->mapper->registerMap(new AccountMap(), $this->connection);
         return $this->mapper->find($dataObject);
     }
 }

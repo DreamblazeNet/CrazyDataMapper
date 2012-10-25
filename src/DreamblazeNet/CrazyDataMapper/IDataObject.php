@@ -11,7 +11,6 @@ interface IDataObject
 {
     public function setMapper(ObjectMapper $mapper);
 
-    public function reload();
     public function delete();
     public function update();
     public function create();

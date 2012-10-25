@@ -1,0 +1,21 @@
+<?xml version="1.0" ?>
+<dataset>
+    <table name="accounts">
+        <column>id</column>
+        <column>name</column>
+        <column>password</column>
+        <column>last_login</column>
+        <row>
+            <value>1</value>
+            <value>joe</value>
+            <value>1234</value>
+            <value>2010-04-24 17:15:23</value>
+        </row>
+        <row>
+            <value>2</value>
+            <value>kitty</value>
+            <value>secret</value>
+            <value>2010-04-26 12:14:20</value>
+        </row>
+    </table>
+</dataset>

@@ -11,13 +11,12 @@ use DreamblazeNet\CrazyDataMapper\Database\IDatabaseConnection;
 class ObjectMapper
 {
     protected  $mapRegistry = array();
-    protected  $dbConnection;
 
-    public function __construct(IDatabaseConnection $dbConnection){
-        $this->dbConnection = $dbConnection;
+    public function __construct(){
+
     }
 
-    public function registerMap(IDataMap $map){
+    public function registerMap(IDataMap $map, IDatabaseConnection $dbConnection){
         $key = get_class($map->getObject());
 
         $this->checkDataObject($key);
@@ -25,7 +24,7 @@ class ObjectMapper
         if(is_string($map))
             $map = new $map();
 
-        $this->mapRegistry[$key] = $map;
+        $this->mapRegistry[$key] = array('map' => $map, 'connection' => $dbConnection);
     }
 
     public function find(IDataObject $object){
@@ -56,8 +55,9 @@ class ObjectMapper
         return $map->getFields();
     }
 
-    public function fetchFromDatabase($query, Array $values){
-        $stmt = $this->dbConnection->prepare($query);
+    public function fetchFromDatabase(IDataObject $object, $query, Array $values){
+        $connection = $this->getConnection($object);
+        $stmt = $connection->prepare($query);
         $stmt->execute($values);
         return $stmt->fetch();
     }
@@ -69,6 +69,22 @@ class ObjectMapper
      */
 
     public function getMap($dataObject){
+        $mappingEntry = $this->getMappingEntry($dataObject);
+        return $mappingEntry['map'];
+    }
+
+    /**
+     * @param $dataObject
+     * @return IDatabaseConnection
+     * @throws \Exception
+     */
+
+    public function getConnection($dataObject){
+        $mappingEntry = $this->getMappingEntry($dataObject);
+        return $mappingEntry['connection'];
+    }
+
+    private function getMappingEntry($dataObject){
         $key = $this->getObjectName($dataObject);
         $this->checkDataObject($key);
         if($this->isMapRegistered($key)){

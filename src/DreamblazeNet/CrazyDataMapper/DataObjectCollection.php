@@ -7,7 +7,7 @@ namespace DreamblazeNet\CrazyDataMapper;
  * Time: 18:39
  * To change this template use File | Settings | File Templates.
  */
-class DataObjectCollection implements \Iterator
+class DataObjectCollection implements \Iterator, \Countable
 {
     protected $filterClauses = array();
     protected $orderClauses = array();
@@ -20,11 +20,13 @@ class DataObjectCollection implements \Iterator
 
     protected $sqlCache = array();
 
-    protected $objects = array();
+    protected $objects = null;
     protected $objectsPointer = 0;
 
+    protected $relations = array();
+
     /**
-     * @var \Dreamblaze\GenSql\Select
+     * @var \DreamblazeNet\GenSql\Select
      */
     protected $sqlQuery = null;
 
@@ -82,9 +84,21 @@ class DataObjectCollection implements \Iterator
         return $this->mapper;
     }
 
-    public function getObjects(){
-        $this->fetchData();
+    private function getObjects(){
+        if(is_null($this->objects))
+            $this->fetchData();
+
         return $this->objects;
+    }
+
+    private function getObject($i){
+        if(is_null($this->objects))
+            $this->objects = $this->getObjects();
+
+        if(count($this->objects) > 0 && isset($this->objects[$i]))
+            return $this->objects[$i];
+        else
+            return null;
     }
 
     protected function getMap(){
@@ -93,13 +107,25 @@ class DataObjectCollection implements \Iterator
 
     protected function fetchData(){
         $this->buildSelectQuery();
-        $result = $this->mapper->fetchFromDatabase($this->getSql(), $this->getValues());
+        $this->parseRelations();
+        $result = $this->mapper->fetchFromDatabase($this->object, $this->getSql(), $this->getValues());
         $data = array();
         foreach ($result as $row) {
             $obj = clone $this->object;
             $obj->setMapper($this->mapper);
             foreach ($row as $field=>$value) {
                 $obj->$field = $value;
+            }
+            if(!empty($this->relations)){
+                foreach($this->relations as $field=>$relation){
+                    $conds = array();
+                    foreach($relation['conditions'] as $key=>$fkey){
+                        $conds[$fkey] = $obj->$key;
+                    }
+                    $relCollection = $relation['collection'];
+                    $relCollection->filter($conds);
+                    $obj->$field = $relCollection;
+                }
             }
             $data[] = $obj;
         }
@@ -116,38 +142,73 @@ class DataObjectCollection implements \Iterator
                 return null;
         }, $mapFields);
 
+        $query = new \DreamblazeNet\GenSql\Select($map->getTableName(), $fields);
+
+        foreach ($this->filterClauses as $field=>$value) {
+            $dbField = $mapFields[$field]['name'];
+            $query->where(array($dbField => $value));
+        }
+
+        $query->limit($this->limit);
+        $query->offset($this->offset);
+
+        $order = array();
+        foreach ($this->orderClauses as $orderClause) {
+            $pos = strpos($orderClause,' ');
+            if($pos === false){
+                $field = $orderClause;
+                $direction = '';
+            } else {
+                $field = substr($orderClause,0,$pos);
+                $direction = substr($orderClause,$pos);
+            }
+            $dbField = $mapFields[$field]['name'];
+            $order[] = $dbField.$direction;
+        }
+        $query->order($order);
+
+        $this->sqlQuery = $query;
+    }
+
+    private function parseRelations(){
+        $map = $this->getMap();
+        $mapFields = $map->getFields();
+        $this->relations = array();
+
         $relations = array_filter($mapFields, function($elem){
             return isset($elem['type']) && $elem['type'] == 'relation';
         });
 
-        $query = new \DreamblazeNet\GenSql\Select($map->getTableName(), $fields);
-
-        $query->where($this->filterClauses);
-        $query->limit($this->limit);
-        $query->offset($this->offset);
-        $query->order($this->orderClauses);
-
-        if(count($relations) > 0 && count($this->includeClauses) > 0){
+        if(count($relations) > 0){
             foreach ($relations as $field=>$relation) {
                 $relObjectType = $relation['itemType'];
                 if(strpos($relObjectType, '\\') === false){
                     $refClass = new \ReflectionClass($map->getObject());
-                    $relObjectType = $refClass->getNamespaceName() . "\\" . $relObjectType;
+                    $relObjectType = '\\' . $refClass->getNamespaceName() . "\\" . $relObjectType;
                 }
 
                 if(!class_exists($relObjectType)){
                     throw new \Exception("Can't find relating type " . $relObjectType);
                 }
-                if(in_array($field, $this->includeClauses)){
-                    $mapper = $this->getMapper();
-                    $joinMap = $mapper->getMap($relObjectType);
 
-                    $query->join($joinMap->getTableName(), $relation['conditions'], $joinMap->getFields());
-                }
+                $mapper = $this->getMapper();
+                $relCollection = new DataObjectCollection($mapper, new $relObjectType());
+                $this->relations[$field] = array('collection' => $relCollection, 'conditions' => $relation['conditions']);
             }
         }
+    }
 
-        $this->sqlQuery = $query;
+    public function all(){
+        return $this->getObjects();
+    }
+
+    public function first(){
+        return $this->getObject(0);
+    }
+
+    public function last(){
+        $lastIndex = count($this->getObjects()) - 1;
+        return $this->getObject($lastIndex);
     }
 
     /**
@@ -158,7 +219,8 @@ class DataObjectCollection implements \Iterator
      */
     public function current()
     {
-        return $this->objects[$this->objectsPointer];
+        $objects = $this->getObjects();
+        return $objects[$this->objectsPointer];
     }
 
     /**
@@ -204,5 +266,20 @@ class DataObjectCollection implements \Iterator
     public function rewind()
     {
         $this->objectsPointer = 0;
+    }
+
+
+    /**
+     * (PHP 5 &gt;= 5.1.0)<br/>
+     * Count elements of an object
+     * @link http://php.net/manual/en/countable.count.php
+     * @return int The custom count as an integer.
+     * </p>
+     * <p>
+     * The return value is cast to an integer.
+     */
+    public function count()
+    {
+        return count($this->getObjects());
     }
 }

@@ -7,7 +7,7 @@
  * To change this template use File | Settings | File Templates.
  */
 
-require(__DIR__ . '/../vendor/autoload.php');
+require_once(__DIR__ . '/../vendor/autoload.php');
 
 const DS = DIRECTORY_SEPARATOR;
 const DB_FILE_NAME = 'db$.sqlite';
@@ -29,18 +29,3 @@ spl_autoload_register(function($className){
             require_once $path;
     }
 });
-
-function prepareDb($id = 1){
-    $dbName = str_replace('$', $id, DB_FILE_NAME);
-    $schemaQuery = file_get_contents(__DIR__ . '/testschema.sql');
-    $fileDir = __DIR__ . '/' . $dbName;
-    if(!file_exists(__DIR__ . '/' . $dbName)){
-        touch($fileDir);
-        $pdo = new PDO('sqlite:' . $dbName);
-        if($pdo->exec($schemaQuery) === false) throw new Exception($pdo->errorInfo());
-    }
-}
-
-prepareDb();
-
-

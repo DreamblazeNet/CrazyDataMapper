@@ -23,9 +23,9 @@ class DummyMap implements IDataMap
     public function getFields()
     {
         return array(
-            'id' => array('name' => 'id', 'type' => 'primary_key'),
-            'name' => array('name' => 'name', 'type' => 'string'),
-            'date' => array('name' => 'date', 'type' => 'date'),
+            'oid' => array('name' => 'id', 'type' => 'primary_key'),
+            'oname' => array('name' => 'name', 'type' => 'string'),
+            'odate' => array('name' => 'date', 'type' => 'date'),
 
             'minions' => array(
                 'type' => 'relation',

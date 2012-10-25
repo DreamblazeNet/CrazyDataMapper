@@ -35,6 +35,10 @@ class PdoDatabaseConnection implements IDatabaseConnection
         $this->optionsChanged = true;
     }
 
+    public function setConnection(\PDO $connection){
+        $this->pdo = $connection;
+    }
+
     /**
      * @param $query String
      * @return IDatabaseStatement
@@ -46,7 +50,6 @@ class PdoDatabaseConnection implements IDatabaseConnection
         $stmt = $this->pdo->prepare($query);
         if(!$stmt)
             throw new \Exception(var_export($this->pdo->errorInfo(),true));
-
         return new PdoDatabaseStatement($stmt);
     }
 
