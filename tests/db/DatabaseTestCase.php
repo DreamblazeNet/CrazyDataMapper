@@ -13,7 +13,7 @@ abstract class DatabaseTestCase extends \PHPUnit_Extensions_Database_TestCase
     static private $pdo = null;
 
     // only instantiate PHPUnit_Extensions_Database_DB_IDatabaseConnection once per test
-    private $conn = null;
+    protected $conn = null;
 
     /**
      * @return null|\PHPUnit_Extensions_Database_DB_DefaultDatabaseConnection|\PHPUnit_Extensions_Database_DB_IDatabaseConnection

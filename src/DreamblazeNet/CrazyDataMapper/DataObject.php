@@ -19,7 +19,26 @@ class DataObject implements IDataObject, ISerializeable
 
     public function delete()
     {
+        $mapper = $this->getMapper();
+        $map = $this->getMap();
+        $mapFields = $map->getFields();
 
+        $pkFields = array();
+        foreach($mapFields as $field=>$fieldInfos){
+            if(isset($fieldInfos['type']) && $fieldInfos['type'] == 'primary_key')
+                $pkFields[] = $field;
+        }
+        if(empty($pkFields))
+            throw new \Exception("Only Dataobject with primary-keys can be deleted");
+
+        $quary = $mapper->getDeleteQuery($this);
+
+        foreach($pkFields as $pkField){
+            $quary->where(array($pkField => $this->$pkField));
+        }
+
+        $affectedRows = $mapper->executeOnDatabase($this, $quary);
+        return $affectedRows > 0;
     }
 
     public function save()

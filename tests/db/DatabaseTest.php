@@ -22,6 +22,10 @@ class DatabaseTest extends DatabaseTestCase
      * @var \DreamblazeNet\CrazyDataMapper\ObjectMapper
      */
     private $mapper;
+
+    /**
+     * @var \DreamblazeNet\CrazyDataMapper\Database\PdoDatabaseConnection
+     */
     private $connection;
 
     protected function setUp()
@@ -47,8 +51,6 @@ class DatabaseTest extends DatabaseTestCase
     }
 
     public function testCreate(){
-        $table = $this->getDataSet()->getTable('characters');
-
         $newChar = new Character();
         $newChar->setMapper($this->mapper);
         $newChar->name = "NewChar";
@@ -62,13 +64,31 @@ class DatabaseTest extends DatabaseTestCase
     }
 
     public function testUpdate(){
+        $chars = $this->mapper->find(new Character());
 
+        $char = $chars->first();
 
+        $this->assertEquals('JoesChar', $char->name);
+
+        $char->name = $char->name . "Updated";
+        $char->save();
+
+        $chars2 = $this->mapper->find(new Character());
+        $char2 = $chars2->first();
+        $this->assertEquals($char->name, $char2->name);
     }
 
     public function testDelete(){
+        $chars = $this->mapper->find(new Character());
+        $char = $chars->first();
 
+        $this->assertEquals('JoesChar', $char->name);
 
+        $char->delete();
+
+        $chars2 = $this->mapper->find(new Character());
+        $char2 = $chars2->first();
+        $this->assertNotEquals($char->name, $char2->name);
     }
 
     private function generateObjectCollection(){

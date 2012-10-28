@@ -17,6 +17,9 @@ class DataObjectCollection implements \Iterator, \Countable, ISerializeable
 
     protected $sqlCache = array();
 
+    /**
+     * @var \DreamblazeNet\CrazyDataMapper\DataObject[]
+     */
     protected $objects = null;
     protected $objectsPointer = 0;
 

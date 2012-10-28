@@ -125,15 +125,12 @@ class ObjectMapper
         $save = false;
         $query = new \DreamblazeNet\GenSql\Delete($map->getTableName(), $fields);
 
-        if(!$save)
-            throw new \Exception("Can't delete DataObject without primary-key");
-        else
-            return $query;
+        return $query;
     }
 
     public function getUpdateQuery(IDataObject $dataObject){
         $map = $this->getMap($dataObject);
-        $fields = $map->getFields();
+        $fields = array_filter($map->getFields(), function($e){return isset($e['name']);});
 
         $query = new \DreamblazeNet\GenSql\Update($map->getTableName(), $fields);
 

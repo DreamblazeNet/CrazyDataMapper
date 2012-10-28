@@ -13,21 +13,33 @@ class PdoDatabaseStatement implements IDatabaseStatement
 
     public function execute($values=array())
     {
-        $this->pdoStatement->execute($values);
+        $affectedRows = $this->pdoStatement->execute($values);
+        $this->checkForErrors();
+        return $affectedRows;
     }
 
     public function fetch($options=0)
     {
-        return $this->pdoStatement->fetchAll(\PDO::FETCH_ASSOC);
+        $result = $this->pdoStatement->fetchAll(\PDO::FETCH_ASSOC);
+        $this->checkForErrors();
+        return $result;
     }
 
     public function affectedRowsCount()
     {
-        return $this->pdoStatement->rowCount();
+        $rowCount = $this->pdoStatement->rowCount();
+        $this->checkForErrors();
+        return $rowCount;
     }
 
     function __construct(\PDOStatement $pdoStmt)
     {
         $this->pdoStatement = $pdoStmt;
+    }
+
+    private function checkForErrors(){
+        $errorCode = $this->pdoStatement->errorInfo();
+        if($errorCode != '00000')
+            new \Exception("DB-Error " . $errorCode . ": " . var_export($this->pdoStatement->errorInfo(), true));
     }
 }
