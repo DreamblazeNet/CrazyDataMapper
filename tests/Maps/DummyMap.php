@@ -30,7 +30,7 @@ class DummyMap implements IDataMap
             'minions' => array(
                 'type' => 'relation',
                 'itemType' => 'Minion',
-                'conditions' => array('id' => 'id')),
+                'conditions' => array('oid' => 'id')),
         );
     }
 }

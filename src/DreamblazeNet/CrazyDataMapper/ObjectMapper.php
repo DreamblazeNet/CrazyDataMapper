@@ -29,10 +29,13 @@ class ObjectMapper
 
     public function find(IDataObject $object){
         $key = self::getObjectName($object);
-        if(array_key_exists($key, $this->mapRegistry))
-            return new DataObjectCollection($this,$object);
-        else
+        if(array_key_exists($key, $this->mapRegistry)){
+            $doc = new DataObjectCollection($object);
+            $doc->setMapper($this);
+            return $doc;
+        } else {
             throw new \Exception("Can't find Map for " . get_class($object));
+        }
     }
 
     protected function getObjectName($object){
@@ -50,16 +53,18 @@ class ObjectMapper
         return $objectName;
     }
 
-    public function getObjectFields(IDataObject $object){
-        $map = $this->getMap($object);
-        return $map->getFields();
+    public function fetchFromDatabase(IDataObject $object, \DreamblazeNet\GenSql\Query $query){
+        $connection = $this->getConnection($object);
+        $stmt = $connection->prepare($query->give_sql());
+        $stmt->execute($query->give_sql_values());
+        return $stmt->fetch();
     }
 
-    public function fetchFromDatabase(IDataObject $object, $query, Array $values){
+    public function executeOnDatabase(IDataObject $object, \DreamblazeNet\GenSql\Query $query){
         $connection = $this->getConnection($object);
-        $stmt = $connection->prepare($query);
-        $stmt->execute($values);
-        return $stmt->fetch();
+        $stmt = $connection->prepare($query->give_sql());
+        $stmt->execute($query->give_sql_values());
+        return $stmt->affectedRowsCount();
     }
 
     /**
@@ -103,5 +108,44 @@ class ObjectMapper
 
     protected function isMapRegistered($mapKey){
         return array_key_exists($mapKey, $this->mapRegistry);
+    }
+
+    public function getSelectQuery(IDataObject $dataObject){
+        $map = $this->getMap($dataObject);
+        $fields = array_filter($map->getFields(), function($e){return isset($e['name']);});
+
+        $query = new \DreamblazeNet\GenSql\Select($map->getTableName(), $fields);
+
+        return $query;
+    }
+
+    public function getDeleteQuery(IDataObject $dataObject){
+        $map = $this->getMap($dataObject);
+        $fields = array_filter($map->getFields(), function($e){return isset($e['name']);});
+        $save = false;
+        $query = new \DreamblazeNet\GenSql\Delete($map->getTableName(), $fields);
+
+        if(!$save)
+            throw new \Exception("Can't delete DataObject without primary-key");
+        else
+            return $query;
+    }
+
+    public function getUpdateQuery(IDataObject $dataObject){
+        $map = $this->getMap($dataObject);
+        $fields = $map->getFields();
+
+        $query = new \DreamblazeNet\GenSql\Update($map->getTableName(), $fields);
+
+        return $query;
+    }
+
+    public function getInsertQuery(IDataObject $dataObject){
+        $map = $this->getMap($dataObject);
+        $fields = array_filter($map->getFields(), function($e){return isset($e['name']);});
+
+        $query = new \DreamblazeNet\GenSql\Insert($map->getTableName(), $fields);
+
+        return $query;
     }
 }

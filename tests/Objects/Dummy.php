@@ -10,9 +10,9 @@ use DreamblazeNet\CrazyDataMapper\DataObject;
  */
 class Dummy extends DataObject
 {
-    public $id;
-    public $name;
-    public $date;
+    public $oid;
+    public $oname;
+    public $odate;
 
     public $minions;
 }

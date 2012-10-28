@@ -7,7 +7,7 @@ namespace DreamblazeNet\CrazyDataMapper;
  * Time: 17:45
  * To change this template use File | Settings | File Templates.
  */
-class DataObject implements IDataObject
+class DataObject implements IDataObject, ISerializeable
 {
     /**
      * @var \DreamblazeNet\CrazyDataMapper\ObjectMapper
@@ -15,79 +15,102 @@ class DataObject implements IDataObject
     private $mapper;
     private $map = null;
     private $connection = null;
-
-    public function setMapper(ObjectMapper $mapper){
-        $this->mapper = $mapper;
-    }
+    private $data = array();
 
     public function delete()
     {
 
     }
 
-    public function update()
+    public function save()
     {
-
-    }
-
-    public function create()
-    {
-
-    }
-
-    private function buildDeleteQuery(){
-        $map = $this->getMap();
-        $fields = $map->getFields();
-        $save = false;
-        $query = new \DreamblazeNet\GenSql\Delete($map->getTableName(), $fields);
-
-        foreach($fields as $objField=>$details){
-            if($details['type'] == 'primary_key'){
-                $query->where(array($details['name'] => $this->$objField));
-                $save = true;
-            }
-        }
-        if(!$save)
-            throw new \Exception("Can't delete DataObject without primary-key");
+        if(empty($this->data))
+            return $this->create();
         else
-            return $query;
+            return $this->update();
     }
-//TODO: Unfinshed
-    private function buildUpdateQuery(){
+
+    public function setData(Array $data){
+        $this->data = $data;
         $map = $this->getMap();
-        $fields = $map->getFields();
+        $mapFields = $map->getFields();
 
-        $query = new \DreamblazeNet\GenSql\Update($map->getTableName(), $fields);
-
-        foreach($fields as $objField=>$details){
-            if($details['type'] == 'primary_key'){
-                $query->where(array($details['name'] => $this->$objField));
-                $save = true;
-            }
+        foreach($mapFields as $field=>$fieldInfo){
+            if(isset($fieldInfo['name']) && isset($data[$fieldInfo['name']]))
+                $this->$field = $data[$fieldInfo['name']];
         }
 
-        return $query;
+        $this->parseRelations();
     }
-//TODO: Unfinished
-    private function buildInsertQuery(){
+
+    public function setMapper(ObjectMapper $mapper){
+        $this->mapper = $mapper;
+    }
+
+    private function create(){
+        $mapper = $this->getMapper();
         $map = $this->getMap();
-        $fields = $map->getFields();
+        $mapFields = $map->getFields();
 
-        $query = new \DreamblazeNet\GenSql\Insert($map->getTableName(), $fields);
-
-        foreach($fields as $objField=>$details){
-            if($details['type'] == 'primary_key'){
-                $query->where(array($details['name'] => $this->$objField));
-                $save = true;
-            }
+        $quary = $mapper->getInsertQuery($this);
+        $values = array();
+        foreach ($mapFields as $field=>$fieldInfos) {
+            if(isset($this->$field) && isset($fieldInfos['name']))
+                $values[$fieldInfos['name']] = $this->$field;
         }
 
-        return $query;
+        $quary->values($values);
+        $affectedRows = $mapper->executeOnDatabase($this, $quary);
+        return $affectedRows > 0;
+    }
+
+    private function update(){
+        $mapper = $this->getMapper();
+        $map = $this->getMap();
+        $mapFields = $map->getFields();
+
+        $quary = $mapper->getUpdateQuery($this);
+        $newValues = array();
+        foreach ($mapFields as $field=>$fieldInfos) {
+            if(
+                isset($this->$field) &&
+                isset($fieldInfos['name']) &&
+                isset($this->data[$fieldInfos['name']]) &&
+                $this->data[$fieldInfos['name']] != $this->$field
+            )
+                $newValues[$fieldInfos['name']] = $this->$field;
+        }
+        $quary->set($newValues);
+        return $mapper->executeOnDatabase($this,$quary) > 0;
+    }
+
+    public function toArray(){
+        $dump = array();
+        $refl = new \ReflectionClass($this);
+        $props = $refl->getProperties(\ReflectionProperty::IS_PUBLIC);
+        foreach ($props as $prop) {
+            $propName = $prop->getName();
+            $propValue = $this->$propName;
+            if(is_string($propValue) || is_numeric($propValue)){
+                $dump[$propName] = $propValue;
+            } elseif(is_object($propValue) && $propValue instanceof ISerializeable){
+                $dump[$propName] = $propValue->toArray();
+            }
+        }
+        return $dump;
+    }
+
+    private function getMapper(){
+        if(!is_object($this->mapper))
+            throw new \Exception("Mapper not set");
+
+        return $this->mapper;
     }
 
     private function getMap(){
         if(is_null($this->map))
             $this->map = $this->mapper->getMap($this);
+
         return $this->map;
     }
 
@@ -95,5 +118,42 @@ class DataObject implements IDataObject
         if(is_null($this->connection))
             $this->connection = $this->mapper->getConnection($this);
         return $this->connection;
+    }
+
+    private function parseRelations(){
+        $map = $this->getMap();
+        $mapFields = $map->getFields();
+
+        $relations = array_filter($mapFields, function($elem){
+            return isset($elem['type']) && $elem['type'] == 'relation';
+        });
+
+        if(count($relations) > 0){
+            foreach ($relations as $field=>$relation) {
+                $relObjectType = $relation['itemType'];
+                if(strpos($relObjectType, '\\') === false){
+                    $refClass = new \ReflectionClass($map->getObject());
+                    $relObjectType = '\\' . $refClass->getNamespaceName() . "\\" . $relObjectType;
+                }
+
+                if(!class_exists($relObjectType)){
+                    throw new \Exception("Can't find relating type " . $relObjectType);
+                }
+
+                $relCollection = new DataObjectCollection(new $relObjectType());
+                $relCollection->setMapper($this->mapper);
+
+                $conds = array();
+                foreach($relation['conditions'] as $key=>$fkey){
+                    if(isset($this->$key))
+                        $conds[$fkey] = $this->$key;
+                    else
+                        throw new \Exception("Can't resolve relation ({$key} => {$fkey}) for " . get_class($this));
+                }
+
+                $relCollection->filter($conds);
+                $this->$field = $relCollection;
+            }
+        }
     }
 }

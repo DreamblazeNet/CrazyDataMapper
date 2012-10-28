@@ -99,18 +99,15 @@ class ObjectCollectionTest extends \PHPUnit_Framework_TestCase
     public function testFetching(){
         $objectCollection = $this->generateObjectCollection();
 
-        $testObject = new Dummy();
-        $testObject->id = 1;
-        $testObject->name = "TestName";
-        $testResult = array($testObject);
-        DummyDatabaseStatement::$testResult = $testResult;
+        $testObjects = $this->fillWithDummies(1);
+        $testObject = $testObjects[0];
 
         $objects = $objectCollection->all();
 
         $this->assertCount(1, $objects);
         $this->assertInstanceOf('DreamblazeNet\\CrazyDataMapper\\IDataObject', $objects[0]);
-        $this->assertAttributeEquals('1', 'id', $objects[0]);
-        $this->assertAttributeEquals('TestName', 'name', $objects[0]);
+        $this->assertAttributeEquals('1', 'oid', $objects[0]);
+        $this->assertAttributeEquals($testObject->oname, 'oname', $objects[0]);
     }
 
     public function testIteration(){
@@ -118,36 +115,44 @@ class ObjectCollectionTest extends \PHPUnit_Framework_TestCase
 
         $testObjects = $this->fillWithDummies(4);
 
-        foreach($objectCollection as $key=>$object){
-            $this->assertTrue($key > 0 && $key < 4);
-            $this->assertContains($object, $testObjects);
-        }
         $this->assertCount(4, $objectCollection);
+        foreach($objectCollection as $key=>$object){
+            $this->assertTrue($key >= 0 && $key < 4);
+            $this->assertEquals($object->oname, $testObjects[$key]->oname);
+        }
     }
 
     public function testFirst(){
         $objectCollection = $this->generateObjectCollection();
         $testObjects = $this->fillWithDummies(3);
 
-        $this->assertEquals($testObjects[0]->name, $objectCollection->first()->name);
+        $this->assertEquals($testObjects[0]->oname, $objectCollection->first()->oname);
+
     }
 
     public function testLast(){
         $objectCollection = $this->generateObjectCollection();
         $testObjects = $this->fillWithDummies(3);
 
-        $this->assertEquals($testObjects[2]->name, $objectCollection->last()->name);
+        $this->assertEquals($testObjects[2]->oname, $objectCollection->last()->oname);
     }
 
     private function fillWithDummies($amount){
         $testObjects = array();
+        DummyDatabaseStatement::$testResult = array();
+
         for($i=0;$i<$amount;$i++){
-            $testObject = new Dummy();
-            $testObject->id = $i + 1;
-            $testObject->name = "TestName" . $i;
-            $testObjects[] = $testObject;
+            $testDummy = new Dummy();
+            $testDummy->oid = $i + 1;
+            $testDummy->oname = "TestName" . $i;
+            $testDummy->minions = new DataObjectCollection(new Minion());
+            $testObjects[] = $testDummy;
+            DummyDatabaseStatement::$testResult[] = array(
+                'id' => $testDummy->oid,
+                'name' => $testDummy->oname,
+            );
         }
-        DummyDatabaseStatement::$testResult = $testObjects;
+
         return $testObjects;
     }
 
@@ -161,6 +166,7 @@ class ObjectCollectionTest extends \PHPUnit_Framework_TestCase
         $this->mapper = new ObjectMapper();
         $dataObject = new Dummy();
         $this->mapper->registerMap(new DummyMap(), $this->connection);
+        $this->mapper->registerMap(new MinionMap(), $this->connection);
         return $this->mapper->find($dataObject);
     }
 }

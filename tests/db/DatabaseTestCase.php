@@ -1,5 +1,5 @@
 <?php
-namespace DreamblazeNet\CrazyDataMapper\Tests;
+namespace DreamblazeNet\CrazyDataMapper\Tests\Db;
 /**
  * Created by JetBrains PhpStorm.
  * User: mriedmann
@@ -28,7 +28,7 @@ abstract class DatabaseTestCase extends \PHPUnit_Extensions_Database_TestCase
                 //$dsn = "mysql:host=localhost;dbname=cdm_test";
                 self::$pdo = new \PDO($dsn);//, 'root', 'root');
                 $schemaQuery = file_get_contents(__DIR__ . '/testschema.sql');
-                if(self::$pdo->exec($schemaQuery) === false) throw new \Exception(self::$pdo->errorInfo());
+                if(self::$pdo->exec($schemaQuery) === false) throw new \Exception(var_export(self::$pdo->errorInfo(),true));
             }
             $this->conn = $this->createDefaultDBConnection(self::$pdo);
         }

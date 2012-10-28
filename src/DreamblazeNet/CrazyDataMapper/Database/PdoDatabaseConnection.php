@@ -47,9 +47,14 @@ class PdoDatabaseConnection implements IDatabaseConnection
     {
         if(is_null($this->pdo) || $this->optionsChanged)
             $this->initDb();
-        $stmt = $this->pdo->prepare($query);
+        try{
+            $stmt = $this->pdo->prepare($query);
+        } catch(\Exception $e){
+            throw $e;
+        }
         if(!$stmt)
             throw new \Exception(var_export($this->pdo->errorInfo(),true));
+
         return new PdoDatabaseStatement($stmt);
     }
 

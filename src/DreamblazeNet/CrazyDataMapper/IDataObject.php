@@ -9,9 +9,11 @@ namespace DreamblazeNet\CrazyDataMapper;
  */
 interface IDataObject
 {
+    public function setData(Array $data);
     public function setMapper(ObjectMapper $mapper);
 
     public function delete();
-    public function update();
-    public function create();
+    public function save();
+
+    public function toArray();
 }

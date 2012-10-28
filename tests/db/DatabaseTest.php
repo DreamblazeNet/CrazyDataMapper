@@ -1,10 +1,14 @@
 <?php
-namespace DreamblazeNet\CrazyDataMapper\Tests;
+namespace DreamblazeNet\CrazyDataMapper\Tests\Db;
 use \DreamblazeNet\CrazyDataMapper\ObjectMapper;
 use \DreamblazeNet\CrazyDataMapper\Tests\Objects\Account;
 use \DreamblazeNet\CrazyDataMapper\Tests\Objects\Character;
+use \DreamblazeNet\CrazyDataMapper\Tests\Objects\GuildMembership;
+use \DreamblazeNet\CrazyDataMapper\Tests\Objects\Guild;
 use \DreamblazeNet\CrazyDataMapper\Tests\Maps\AccountMap;
 use \DreamblazeNet\CrazyDataMapper\Tests\Maps\CharacterMap;
+use \DreamblazeNet\CrazyDataMapper\Tests\Maps\GuildMembershipMap;
+use \DreamblazeNet\CrazyDataMapper\Tests\Maps\GuildMap;
 /**
  * Created by JetBrains PhpStorm.
  * User: mriedmann
@@ -25,30 +29,59 @@ class DatabaseTest extends DatabaseTestCase
         $connection = new \DreamblazeNet\CrazyDataMapper\Database\PdoDatabaseConnection(null);
         $connection->setConnection($this->getConnection()->getConnection());
         $this->connection = $connection;
+        $this->initMapper();
         parent::setUp();
     }
 
     public function testRelations(){
         $objectCollection = $this->generateObjectCollection();
-        $this->mapper->registerMap(new AccountMap(), $this->connection);
-        $this->mapper->registerMap(new CharacterMap(), $this->connection);
-
-        $objectCollection->includes(array('characters'));
 
         $objects = $objectCollection->all();
 
-        $this->assertCount(2, $objects);
+        $this->assertCount(2, $objects,"Accounts");
         $this->assertInstanceOf('DreamblazeNet\CrazyDataMapper\Tests\Objects\Account', reset($objects));
         $this->assertEquals('joe', $objects[0]->name);
         $this->assertInstanceOf('DreamblazeNet\CrazyDataMapper\DataObjectCollection',$objects[0]->characters);
         $chars = $objects[0]->characters;
-        $this->assertCount(2,$chars);
+        $this->assertCount(1,$chars, "Characters");
+    }
+
+    public function testCreate(){
+        $table = $this->getDataSet()->getTable('characters');
+
+        $newChar = new Character();
+        $newChar->setMapper($this->mapper);
+        $newChar->name = "NewChar";
+        $newChar->level = 70;
+        $newChar->accountId = 1;
+
+        $this->assertTrue($newChar->save());
+
+        $conn = $this->getConnection();
+        $this->assertEquals(4, $conn->getRowCount('characters'), "Inserting failed");
+    }
+
+    public function testUpdate(){
+
+
+    }
+
+    public function testDelete(){
+
+
     }
 
     private function generateObjectCollection(){
-        $this->mapper = new ObjectMapper();
+        $this->initMapper();
         $dataObject = new Account();
-        $this->mapper->registerMap(new AccountMap(), $this->connection);
         return $this->mapper->find($dataObject);
+    }
+
+    private function initMapper(){
+        $this->mapper = new ObjectMapper();
+        $this->mapper->registerMap(new AccountMap(), $this->connection);
+        $this->mapper->registerMap(new CharacterMap(), $this->connection);
+        $this->mapper->registerMap(new GuildMembershipMap(), $this->connection);
+        $this->mapper->registerMap(new GuildMap(), $this->connection);
     }
 }

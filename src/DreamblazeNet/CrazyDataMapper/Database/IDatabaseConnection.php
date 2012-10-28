@@ -9,11 +9,6 @@ namespace DreamblazeNet\CrazyDataMapper\Database;
  */
 interface IDatabaseConnection
 {
-    public function __construct($dsn, $user=null, $pass=null);
-
-    public function setOptions($options);
-
-
     /**
      * @param $query String
      * @return IDatabaseStatement

@@ -33,7 +33,7 @@ class ObjectMapperTest extends \PHPUnit_Framework_TestCase
     public function testConstruction(){
         $mapper = $this->generateMapper();
         $mapper->registerMap(new DummyMap(), $this->connection);
-        $mapRegistry = $this->getObjProp($mapper, 'mapRegistry');
+        $mapRegistry = TestHelper::getObjProp($mapper, 'mapRegistry');
         $this->assertTrue(array_key_exists(__NAMESPACE__ . "\\Objects\\" . $this->DATAOBJECT_NAME, $mapRegistry));
         return $mapper;
     }
@@ -53,7 +53,7 @@ class ObjectMapperTest extends \PHPUnit_Framework_TestCase
     public function testGetMap(ObjectMapper $mapper){
         $object = new Dummy();
 
-        $mapRegistry = $this->getObjProp($mapper, 'mapRegistry');
+        $mapRegistry = TestHelper::getObjProp($mapper, 'mapRegistry');
         $this->assertTrue(array_key_exists(get_class($object), $mapRegistry));
 
         $map = $mapper->getMap($object);
@@ -67,7 +67,7 @@ class ObjectMapperTest extends \PHPUnit_Framework_TestCase
     public function testRegisterMap(ObjectMapper $mapper){
         $mapper->registerMap(new AccountMap(), $this->connection);
         $mapper->registerMap(new CharacterMap(), $this->connection);
-        $mapRegistry = $this->getObjProp($mapper, 'mapRegistry');
+        $mapRegistry = TestHelper::getObjProp($mapper, 'mapRegistry');
         $this->assertArrayHasKey('DreamblazeNet\\CrazyDataMapper\\Tests\\Objects\\Account', $mapRegistry);
         $this->assertArrayHasKey('DreamblazeNet\\CrazyDataMapper\\Tests\\Objects\\Character', $mapRegistry);
     }
@@ -77,10 +77,5 @@ class ObjectMapperTest extends \PHPUnit_Framework_TestCase
         return $mapper;
     }
 
-    private function getObjProp($obj, $prop){
-        $refl = new \ReflectionClass($obj);
-        $prop = $refl->getProperty($prop);
-        $prop->setAccessible(true);
-        return $prop->getValue($obj);
-    }
+
 }

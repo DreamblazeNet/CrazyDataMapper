@@ -1,10 +1,12 @@
 <?php
-namespace DreamblazeNet\CrazyDataMapper\Tests;
+namespace DreamblazeNet\CrazyDataMapper\Tests\Db;
 use \DreamblazeNet\CrazyDataMapper\ObjectMapper;
 use \DreamblazeNet\CrazyDataMapper\Tests\Objects\Account;
 use \DreamblazeNet\CrazyDataMapper\Tests\Objects\Character;
 use \DreamblazeNet\CrazyDataMapper\Tests\Maps\AccountMap;
 use \DreamblazeNet\CrazyDataMapper\Tests\Maps\CharacterMap;
+use \DreamblazeNet\CrazyDataMapper\Tests\Maps\GuildMembershipMap;
+use \DreamblazeNet\CrazyDataMapper\Tests\Maps\GuildMap;
 /**
  * Created by JetBrains PhpStorm.
  * User: mriedmann
@@ -37,7 +39,7 @@ class MultiDatabaseTest extends MultiDatabaseTestCase
         $this->assertEquals('joe', $objects[0]->name);
         $this->assertInstanceOf('DreamblazeNet\CrazyDataMapper\DataObjectCollection',$objects[0]->characters);
         $chars = $objects[0]->characters;
-        $this->assertCount(2,$chars);
+        $this->assertCount(1,$chars);
 
     }
 
@@ -53,10 +55,11 @@ class MultiDatabaseTest extends MultiDatabaseTestCase
         $mapper = new ObjectMapper();
         $mapper->registerMap(new AccountMap(), $connection1);
         $mapper->registerMap(new CharacterMap(), $connection2);
+        $mapper->registerMap(new GuildMembershipMap(), $connection2);
+        $mapper->registerMap(new GuildMap(), $connection2);
 
         $this->mapper = $mapper;
     }
-
 
     private function generateObjectCollection(){
         $dataObject = new Account();

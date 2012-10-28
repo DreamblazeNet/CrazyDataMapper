@@ -7,14 +7,11 @@ namespace DreamblazeNet\CrazyDataMapper;
  * Time: 18:39
  * To change this template use File | Settings | File Templates.
  */
-class DataObjectCollection implements \Iterator, \Countable
+class DataObjectCollection implements \Iterator, \Countable, ISerializeable
 {
-    protected $filterClauses = array();
-    protected $orderClauses = array();
-    protected $includeClauses = array();
-    protected $limit = null;
-    protected $offset = null;
-
+    /**
+     * @var \DreamblazeNet\CrazyDataMapper\ObjectMapper
+     */
     protected $mapper = null;
     protected $object = null;
 
@@ -23,137 +20,41 @@ class DataObjectCollection implements \Iterator, \Countable
     protected $objects = null;
     protected $objectsPointer = 0;
 
-    protected $relations = array();
-
     /**
      * @var \DreamblazeNet\GenSql\Select
      */
     protected $sqlQuery = null;
 
-    public function __construct(ObjectMapper $mapper, IDataObject $object){
-        $this->mapper = $mapper;
+    public function __construct(IDataObject $object){
         $this->object = $object;
     }
 
+    public function setMapper(ObjectMapper $mapper){
+        $this->mapper = $mapper;
+    }
+
+    public function getMapper(){
+        if(!is_object($this->mapper))
+            throw new \Exception("Mapper not set");
+
+        return $this->mapper;
+    }
+
     public function filter(Array $filterClauses){
-        $this->filterClauses = array_merge($this->filterClauses, $filterClauses);
+        $map = $this->getMap();
+        $mapFields = $map->getFields();
+        foreach ($filterClauses as $field=>$value) {
+            $dbField = $mapFields[$field]['name'];
+            $this->getQuery()->where(array($dbField => $value));
+        }
         return $this;
     }
 
     public function order(Array $orderClauses){
-        $this->orderClauses = array_merge($this->orderClauses, $orderClauses);
-        return $this;
-    }
-
-    public function limit($maxResults, $offset = null){
-        $this->limit = $maxResults;
-        $this->offset = $offset;
-        return $this;
-    }
-
-    public function includes(Array $includeClauses){
-        $this->includeClauses = array_merge($this->includeClauses, $includeClauses);
-        return $this;
-    }
-
-    public function reset(){
-        $this->filterClauses = array();
-        $this->orderClauses = array();
-        $this->includeClauses = array();
-        $this->limit = null;
-        $this->offset = null;
-
-        $this->sqlQuery = null;
-    }
-
-    public function getValues(){
-        if(is_null($this->sqlQuery))
-            $this->buildSelectQuery();
-
-        return $this->sqlQuery->give_sql_values();
-    }
-
-    public function getSql(){
-        if(is_null($this->sqlQuery))
-            $this->buildSelectQuery();
-
-        return $this->sqlQuery->give_sql();
-    }
-
-    public function getMapper(){
-        return $this->mapper;
-    }
-
-    private function getObjects(){
-        if(is_null($this->objects))
-            $this->fetchData();
-
-        return $this->objects;
-    }
-
-    private function getObject($i){
-        if(is_null($this->objects))
-            $this->objects = $this->getObjects();
-
-        if(count($this->objects) > 0 && isset($this->objects[$i]))
-            return $this->objects[$i];
-        else
-            return null;
-    }
-
-    protected function getMap(){
-        return $this->mapper->getMap($this->object);
-    }
-
-    protected function fetchData(){
-        $this->buildSelectQuery();
-        $this->parseRelations();
-        $result = $this->mapper->fetchFromDatabase($this->object, $this->getSql(), $this->getValues());
-        $data = array();
-        foreach ($result as $row) {
-            $obj = clone $this->object;
-            $obj->setMapper($this->mapper);
-            foreach ($row as $field=>$value) {
-                $obj->$field = $value;
-            }
-            if(!empty($this->relations)){
-                foreach($this->relations as $field=>$relation){
-                    $conds = array();
-                    foreach($relation['conditions'] as $key=>$fkey){
-                        $conds[$fkey] = $obj->$key;
-                    }
-                    $relCollection = $relation['collection'];
-                    $relCollection->filter($conds);
-                    $obj->$field = $relCollection;
-                }
-            }
-            $data[] = $obj;
-        }
-        $this->objects = $data;
-    }
-
-    protected function buildSelectQuery(){
+        $order = array();
         $map = $this->getMap();
         $mapFields = $map->getFields();
-        $fields = array_map(function($elem){
-            if(isset($elem['name']) && isset($elem['type']) && $elem['type'] != 'relation')
-                return $elem['name'];
-            else
-                return null;
-        }, $mapFields);
-
-        $query = new \DreamblazeNet\GenSql\Select($map->getTableName(), $fields);
-
-        foreach ($this->filterClauses as $field=>$value) {
-            $dbField = $mapFields[$field]['name'];
-            $query->where(array($dbField => $value));
-        }
-
-        $query->limit($this->limit);
-        $query->offset($this->offset);
-
-        $order = array();
-        foreach ($this->orderClauses as $orderClause) {
+        foreach ($orderClauses as $orderClause) {
             $pos = strpos($orderClause,' ');
             if($pos === false){
                 $field = $orderClause;
@@ -165,50 +66,112 @@ class DataObjectCollection implements \Iterator, \Countable
             $dbField = $mapFields[$field]['name'];
             $order[] = $dbField.$direction;
         }
-        $query->order($order);
-
-        $this->sqlQuery = $query;
+        $this->getQuery()->order($order);
+        return $this;
     }
 
-    private function parseRelations(){
-        $map = $this->getMap();
-        $mapFields = $map->getFields();
-        $this->relations = array();
+    public function limit($maxResults, $offset = null){
+        $this->getQuery()->limit($maxResults);
+        $this->getQuery()->offset($offset);
+        return $this;
+    }
 
-        $relations = array_filter($mapFields, function($elem){
-            return isset($elem['type']) && $elem['type'] == 'relation';
-        });
+    public function reset(){
+        $this->sqlQuery = null;
+    }
 
-        if(count($relations) > 0){
-            foreach ($relations as $field=>$relation) {
-                $relObjectType = $relation['itemType'];
-                if(strpos($relObjectType, '\\') === false){
-                    $refClass = new \ReflectionClass($map->getObject());
-                    $relObjectType = '\\' . $refClass->getNamespaceName() . "\\" . $relObjectType;
-                }
+    public function getValues(){
+        return $this->getQuery()->give_sql_values();
+    }
 
-                if(!class_exists($relObjectType)){
-                    throw new \Exception("Can't find relating type " . $relObjectType);
-                }
+    public function getSql(){
+        return $this->getQuery()->give_sql();
+    }
 
-                $mapper = $this->getMapper();
-                $relCollection = new DataObjectCollection($mapper, new $relObjectType());
-                $this->relations[$field] = array('collection' => $relCollection, 'conditions' => $relation['conditions']);
-            }
+    protected function getQuery(){
+        if(!is_object($this->sqlQuery))
+            $this->sqlQuery = $this->getMapper()->getSelectQuery($this->object);
+
+        return $this->sqlQuery;
+    }
+
+    protected function getMap(){
+        return $this->getMapper()->getMap($this->object);
+    }
+
+    protected function fetchData(){
+        $result = $this->getMapper()->fetchFromDatabase($this->object, $this->getQuery());
+        $data = array();
+        foreach ($result as $row) {
+            $obj = clone $this->object;
+            $obj->setMapper($this->mapper);
+            $obj->setData($row);
+
+            $data[] = $obj;
         }
+        $this->objects = $data;
     }
 
+    /**
+     * @return IDataObject[]
+     */
+    private function getObjects(){
+        if(is_null($this->objects))
+            $this->fetchData();
+
+        return $this->objects;
+    }
+
+    /**
+     * @param $i int
+     * @return IDataObject|null
+     */
+    private function getObject($i){
+        if(is_null($this->objects))
+            $this->objects = $this->getObjects();
+
+        if(count($this->objects) > 0 && isset($this->objects[$i]))
+            return $this->objects[$i];
+        else
+            return null;
+    }
+
+    public function toArray(){
+        $objects = $this->objects;
+        $dump = array();
+        foreach ($objects as $key=>$object) {
+            $dump[$key] = $object->toArray();
+        }
+        return $dump;
+    }
+
+    /**
+     * @return IDataObject[]
+     */
     public function all(){
         return $this->getObjects();
     }
 
+    /**
+     * @return IDataObject|null
+     */
     public function first(){
         return $this->getObject(0);
     }
 
+    /**
+     * @return IDataObject|null
+     */
     public function last(){
         $lastIndex = count($this->getObjects()) - 1;
         return $this->getObject($lastIndex);
+    }
+
+    public function add(IDataObject $dataObject){
+        if(!is_array($this->objects))
+            $this->objects = array();
+
+        $this->objects[] = $dataObject;
     }
 
     /**
@@ -267,7 +230,6 @@ class DataObjectCollection implements \Iterator, \Countable
     {
         $this->objectsPointer = 0;
     }
-
 
     /**
      * (PHP 5 &gt;= 5.1.0)<br/>

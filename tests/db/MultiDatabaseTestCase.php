@@ -1,5 +1,5 @@
 <?php
-namespace DreamblazeNet\CrazyDataMapper\Tests;
+namespace DreamblazeNet\CrazyDataMapper\Tests\Db;
 /**
  * Created by JetBrains PhpStorm.
  * User: mriedmann
