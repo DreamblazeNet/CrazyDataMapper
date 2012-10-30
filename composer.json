@@ -1,9 +1,16 @@
 {
     "name": "dreamblazenet/crazydatamapper",
-    "repositories": [
+    "type": "library",
+    "description": "Weird DatabaseAbstraction-Library",
+    "keywords": ["database","dal", "datamapper"],
+    "homepage": "http://github.com/DreamblazeNet/CrazyDataMapper",
+    "license": "MIT",
+    "authors": [
         {
-            "type": "vcs",
-            "url": "https://github.com/DreamblazeNet/GenSql"
+            "name": "Michael Riedmann",
+            "email": "reddragon010@gmail.com",
+            "homepage": "http://dreamblaze.net",
+            "role": "Owner"
         }
     ],
     "require-dev": {
@@ -12,6 +19,7 @@
 
     },
     "require": {
+        "php": ">=5.3.0",
         "dreamblazenet/gensql": "dev-master"
     },
     "autoload": {
