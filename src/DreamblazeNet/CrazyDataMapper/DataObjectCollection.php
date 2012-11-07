@@ -7,7 +7,7 @@ namespace DreamblazeNet\CrazyDataMapper;
  * Time: 18:39
  * To change this template use File | Settings | File Templates.
  */
-class DataObjectCollection implements \Iterator, \Countable, ISerializeable
+class DataObjectCollection implements \Iterator, \Countable, \ArrayAccess, ISerializeable
 {
     /**
      * @var \DreamblazeNet\CrazyDataMapper\ObjectMapper
@@ -246,5 +246,82 @@ class DataObjectCollection implements \Iterator, \Countable, ISerializeable
     public function count()
     {
         return count($this->getObjects());
+    }
+
+    /**
+     * (PHP 5 &gt;= 5.0.0)<br/>
+     * Whether a offset exists
+     * @link http://php.net/manual/en/arrayaccess.offsetexists.php
+     * @param mixed $offset <p>
+     * An offset to check for.
+     * </p>
+     * @return boolean true on success or false on failure.
+     * </p>
+     * <p>
+     * The return value will be casted to boolean if non-boolean was returned.
+     */
+    public function offsetExists($offset)
+    {
+        $objects = $this->getObjects();
+        return !is_null($objects) && isset($objects[$offset]);
+    }
+
+    /**
+     * (PHP 5 &gt;= 5.0.0)<br/>
+     * Offset to retrieve
+     * @link http://php.net/manual/en/arrayaccess.offsetget.php
+     * @param mixed $offset <p>
+     * The offset to retrieve.
+     * </p>
+     * @return mixed Can return all value types.
+     */
+    public function offsetGet($offset)
+    {
+        $objects = $this->getObjects();
+        return $this->offsetExists($offset) ? $objects[$offset] : null;
+    }
+
+    /**
+     * (PHP 5 &gt;= 5.0.0)<br/>
+     * Offset to set
+     * @link http://php.net/manual/en/arrayaccess.offsetset.php
+     * @param mixed $offset <p>
+     * The offset to assign the value to.
+     * </p>
+     * @param mixed $value <p>
+     * The value to set.
+     * </p>
+     * @return void
+     */
+    public function offsetSet($offset, $value)
+    {
+        if(!($value instanceof IDataObject))
+            throw new \Exception("only IDataObjects are supported");
+
+        if(!is_array($this->objects))
+            $this->objects = array();
+
+        if (is_null($offset)) {
+            $this->objects[] = $value;
+        } else {
+            $this->object[$offset] = $value;
+        }
+    }
+
+    /**
+     * (PHP 5 &gt;= 5.0.0)<br/>
+     * Offset to unset
+     * @link http://php.net/manual/en/arrayaccess.offsetunset.php
+     * @param mixed $offset <p>
+     * The offset to unset.
+     * </p>
+     * @return void
+     */
+    public function offsetUnset($offset)
+    {
+        if(!is_array($this->objects))
+            $this->objects = array();
+
+        unset($this->objects[$offset]);
     }
 }
