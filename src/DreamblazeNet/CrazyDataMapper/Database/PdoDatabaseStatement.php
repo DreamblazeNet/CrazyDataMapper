@@ -38,7 +38,7 @@ class PdoDatabaseStatement implements IDatabaseStatement
     }
 
     private function checkForErrors(){
-        $errorCode = $this->pdoStatement->errorInfo();
+        $errorCode = $this->pdoStatement->errorCode();
         if($errorCode != '00000')
             new \Exception("DB-Error " . $errorCode . ": " . var_export($this->pdoStatement->errorInfo(), true));
     }
