@@ -21,9 +21,6 @@ class ObjectMapper
 
         $this->checkDataObject($key);
 
-        if(is_string($map))
-            $map = new $map();
-
         $this->mapRegistry[$key] = array('map' => $map, 'connection' => $dbConnection);
     }
 
